@@ -49,14 +49,18 @@ npm run build:dir   # 打包为目录（测试用，不压缩）
 
 打包后的文件位于 `dist/` 目录：
 - Windows: `人脸亮度控制-1.0.0-portable.exe`
-- macOS: `人脸亮度控制.app`
+- macOS: 
+  - `人脸亮度控制-1.0.0-universal.dmg` (推荐分发)
+  - `人脸亮度控制-1.0.0-universal-mac.zip` (备选)
+  - 支持 Intel 和 Apple Silicon Mac
 
 ## 🖥️ 平台支持
 
 | 平台 | 状态 | 亮度控制方案 | 说明 |
 |------|------|--------------|------|
 | **Windows 10/11** | ✅ 完全支持 | PowerShell + WMI | 笔记本内置屏幕 |
-| **macOS** | ✅ 完全支持 | DisplayServices 框架 | MacBook 内置屏幕 |
+| **macOS (Apple Silicon)** | ✅ 已测试 | DisplayServices 框架 | M1/M2/M3 Mac |
+| **macOS (Intel)** | ⚠️ 未测试 | DisplayServices 框架 | 理论支持，需用户反馈 |
 | **Linux** | ⚪ 暂不支持 | - | 计划中 |
 
 ## 💻 技术栈
@@ -148,9 +152,15 @@ DisplayServicesGetBrightness(display, &brightness);
 
 - **操作系统**: 
   - Windows 10/11
-  - macOS 10.13 或更高版本
+  - macOS 10.15 (Catalina) 或更高版本
 - **摄像头**: 需要可用的摄像头设备
 - **权限**: 首次运行需要授予摄像头权限
+
+#### macOS 架构支持
+- ✅ **Apple Silicon (M1/M2/M3)**: 已测试，完全支持
+- ⚠️ **Intel (x86_64)**: 理论支持，**未在真机测试**
+  - Universal 二进制包含 Intel 支持
+  - 如遇问题请提 Issue 反馈
 
 ### 亮度控制限制
 

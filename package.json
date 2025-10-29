@@ -50,6 +50,22 @@
     "asarUnpack": [
       "brightness-final"
     ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ]
+    },
     "win": {
       "target": [
         {
