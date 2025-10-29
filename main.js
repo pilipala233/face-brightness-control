@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, systemPreferences, dialog, Menu } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
@@ -58,6 +58,9 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') {
     await checkAndRequestAccessibility();
   }
+  
+  // 创建菜单
+  createMenu();
   
   createWindow();
 
@@ -204,3 +207,64 @@ ipcMain.handle('get-brightness', async () => {
     return { success: false, error: error.message };
   }
 });
+
+// 文件夹选择对话框
+ipcMain.handle('select-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory', 'createDirectory']
+  });
+  
+  if (result.canceled) {
+    return null;
+  }
+  
+  return result.filePaths[0];
+});
+
+// 创建测试窗口
+function createTestWindow() {
+  const testWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  testWindow.loadFile('face-test.html');
+  
+  // 开发模式下打开调试工具
+  if (!app.isPackaged || process.argv.includes('--dev')) {
+    testWindow.webContents.openDevTools();
+  }
+}
+
+// 创建菜单
+function createMenu() {
+  const template = [
+    // macOS 第一个菜单是应用名称
+    ...(process.platform === 'darwin' ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: '工具',
+      submenu: [
+        {
+          label: '人脸识别测试',
+          click: () => {
+            createTestWindow();
+          }
+        }
+      ]
+    }
+  ];
+  
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
