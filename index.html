@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人脸检测亮度控制</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- 加载 face-api.js 浏览器版本 -->
+    <script src="./node_modules/@vladmandic/face-api/dist/face-api.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>人脸检测亮度控制</h1>
+
+        <div class="main-content">
+            <!-- 左侧：视频预览区域 -->
+            <div class="left-panel">
+                <div class="video-container">
+                    <video id="video" autoplay></video>
+                    <canvas id="canvas"></canvas>
+                </div>
+
+                <div class="status">
+                    <p>状态: <span id="status">未启动</span></p>
+                    <p>人脸检测: <span id="faceDetected">无</span></p>
+                    <p id="debugInfo" style="font-size: 12px; color: #888;"></p>
+                </div>
+
+                <div class="controls">
+                    <button id="startBtn" class="btn btn-primary">启动检测</button>
+                    <button id="stopBtn" class="btn btn-secondary" disabled>停止检测</button>
+                </div>
+            </div>
+
+            <!-- 右侧：设置面板 -->
+            <div class="right-panel">
+                <div class="settings">
+                    <h3>设置</h3>
+                    <label>
+                        选择摄像头:
+                        <select id="cameraSelect">
+                            <option value="">加载中...</option>
+                        </select>
+                    </label>
+                    <label>
+                        检测模型:
+                        <select id="modelSelect">
+                            <option value="tiny">TinyFaceDetector（快速）</option>
+                            <option value="ssd" selected>SSD MobileNet（准确，推荐）</option>
+                        </select>
+                        <small style="color: #888;">SSD更准确但稍慢</small>
+                    </label>
+                    <label>
+                        检测间隔 (毫秒):
+                        <input type="number" id="interval" value="500" min="500" max="5000" step="100">
+                    </label>
+                    <label>
+                        检测灵敏度:
+                        <select id="sensitivity">
+                            <option value="0.2">高 - 远距离（阈值: 0.2）</option>
+                            <option value="0.3">中 - 正常距离（阈值: 0.3）</option>
+                            <option value="0.5" selected>低 - 近距离（阈值: 0.5，推荐）</option>
+                        </select>
+                        <small style="color: #888;">灵敏度越低，需要越近才能检测到人脸</small>
+                    </label>
+                    <label>
+                        最低亮度 (检测到人脸时):
+                        <input type="number" id="minBrightness" value="10" min="0" max="100">
+                    </label>
+                    <label>
+                        最高亮度 (无人脸时):
+                        <input type="number" id="maxBrightness" value="100" min="0" max="100">
+                        <small style="color: #888;">将自动设为启动时检测到的亮度</small>
+                    </label>
+                    <label>
+                        触发人脸数量阈值:
+                        <input type="number" id="faceThreshold" value="2" min="1" max="10" step="1">
+                        <small style="color: #888;">≥此数量的人脸才降低亮度（默认2: 你+其他人）</small>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="showDetection" checked>
+                        显示人脸检测框（关闭可提升性能）
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
