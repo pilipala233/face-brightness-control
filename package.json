@@ -4,11 +4,16 @@
   "description": "人脸检测自动控制屏幕亮度",
   "main": "main.js",
   "scripts": {
-    "start": "chcp 65001 >nul && electron .",
-    "dev": "chcp 65001 >nul && electron . --dev",
-    "build": "electron-builder --win --x64",
-    "build:dir": "electron-builder --dir",
-    "dist": "electron-builder"
+    "start": "run-script-os",
+    "start:win32": "chcp 65001 >nul && electron .",
+    "start:darwin:linux": "electron .",
+    "dev": "run-script-os",
+    "dev:win32": "chcp 65001 >nul && electron . --dev",
+    "dev:darwin:linux": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
+    "build:dir": "electron-builder --dir"
   },
   "keywords": [
     "electron",
@@ -19,7 +24,8 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^39.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "run-script-os": "^1.1.6"
   },
   "dependencies": {
     "@vladmandic/face-api": "^1.7.15"
@@ -40,6 +46,9 @@
       "!.git",
       "!.github",
       "!.claude"
+    ],
+    "asarUnpack": [
+      "brightness-final"
     ],
     "win": {
       "target": [

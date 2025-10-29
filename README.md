@@ -10,7 +10,8 @@
 - 🔧 **多模型支持**：支持 TinyFaceDetector（快速）和 SSD MobileNet（准确）
 - ⚙️ **灵活配置**：可调节检测间隔、灵敏度、亮度范围等参数
 - 🖼️ **可视化检测**：实时显示检测到的人脸框和置信度
-- 📦 **绿色便携**：打包为单文件 exe，无需安装
+- 🖥️ **跨平台支持**：支持 Windows 和 macOS
+- 📦 **绿色便携**：无需安装额外依赖，开箱即用
 
 ## 🚀 快速开始
 
@@ -20,25 +21,52 @@
 npm install
 ```
 
+**注意：** 项目已配置淘宝镜像源（`.npmrc`），国内用户安装速度更快。
+
 ### 运行开发版
 
 ```bash
-npm start
+npm start   # 或 npm run dev
 ```
+
+**跨平台自动适配**：
+- Windows: 自动设置 UTF-8 编码，避免中文乱码
+- macOS/Linux: 直接启动
 
 ### 打包应用
 
 ```bash
-npm run build
+# 跨平台打包（推荐）
+npm run build       # 自动根据当前平台打包
+
+# 指定平台打包
+npm run build:win   # 打包 Windows 版本（x64 便携版 exe）
+npm run build:mac   # 打包 macOS 版本（.app）
+
+# 其他
+npm run build:dir   # 打包为目录（测试用，不压缩）
 ```
 
-打包后的便携版 exe 文件位于 `dist/` 目录。
+打包后的文件位于 `dist/` 目录：
+- Windows: `人脸亮度控制-1.0.0-portable.exe`
+- macOS: `人脸亮度控制.app`
+
+## 🖥️ 平台支持
+
+| 平台 | 状态 | 亮度控制方案 | 说明 |
+|------|------|--------------|------|
+| **Windows 10/11** | ✅ 完全支持 | PowerShell + WMI | 笔记本内置屏幕 |
+| **macOS** | ✅ 完全支持 | DisplayServices 框架 | MacBook 内置屏幕 |
+| **Linux** | ⚪ 暂不支持 | - | 计划中 |
 
 ## 💻 技术栈
 
 - **框架**: Electron 39.x
 - **人脸检测**: @vladmandic/face-api 1.7.x
-- **亮度控制**: PowerShell + WMI（原生支持，无需第三方库）
+- **亮度控制**: 
+  - Windows: PowerShell + WMI
+  - macOS: DisplayServices 私有框架（原生）
+- **跨平台脚本**: run-script-os
 - **打包工具**: electron-builder
 
 ## 📖 使用说明
@@ -73,13 +101,14 @@ npm run build
 
 ### 亮度控制实现
 
+#### Windows
 本项目**不使用**已弃用的 `wmic` 命令，而是直接调用 **PowerShell + WMI** API：
 
-```javascript
-// 获取亮度
+```powershell
+# 获取亮度
 powershell -Command "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness).CurrentBrightness"
 
-// 设置亮度
+# 设置亮度
 powershell -Command "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, 50)"
 ```
 
@@ -88,6 +117,24 @@ powershell -Command "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightn
 - ✅ 打包后正常工作
 - ✅ 不依赖已弃用的 wmic
 - ✅ 兼容 Windows 10/11
+
+#### macOS
+使用 **DisplayServices 私有框架**，通过编译的 Objective-C 二进制程序控制亮度：
+
+```objectivec
+// 动态加载 DisplayServices 框架
+void* handle = dlopen("/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices", RTLD_LAZY);
+
+// 调用亮度控制函数
+DisplayServicesSetBrightness(display, brightness);
+DisplayServicesGetBrightness(display, &brightness);
+```
+
+优势：
+- ✅ 无需用户安装任何依赖
+- ✅ 直接控制 MacBook 内置屏幕
+- ✅ 打包后正常工作
+- ✅ 不需要辅助功能权限
 
 ### 人脸检测模型
 
@@ -99,15 +146,25 @@ powershell -Command "(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightn
 
 ### 系统要求
 
-- **操作系统**: Windows 10/11
+- **操作系统**: 
+  - Windows 10/11
+  - macOS 10.13 或更高版本
 - **摄像头**: 需要可用的摄像头设备
 - **权限**: 首次运行需要授予摄像头权限
 
 ### 亮度控制限制
 
+#### Windows
 - ✅ **笔记本内置屏幕**: 完全支持
 - ❌ **外接显示器**: 大多数不支持软件控制（硬件限制）
 - ⚠️ **某些显示器**: 需要支持 DDC/CI 协议
+
+#### macOS
+- ✅ **MacBook 内置屏幕**: 完全支持
+- ❌ **外接显示器**: 不支持（技术限制）
+- ✅ **无需额外权限**: 使用系统框架，不需要辅助功能权限
+- ⚠️ **首次运行**: 可能提示"来自未识别的开发者"
+  - 解决方法：系统设置 -> 隐私与安全性 -> 仍要打开
 
 ### 性能优化建议
 
@@ -123,8 +180,10 @@ face-brightness-control/
 ├── renderer.js              # 渲染进程（人脸检测逻辑）
 ├── index.html               # 主界面
 ├── styles.css               # 样式文件
-├── brightnessController.js  # 亮度控制模块（备用）
+├── brightness-final         # macOS 亮度控制二进制
+├── brightness-final.m       # macOS 亮度控制源码
 ├── package.json             # 项目配置
+├── .npmrc                   # npm 镜像配置（淘宝源）
 ├── README.md                # 项目说明
 └── USAGE.md                 # 详细使用文档
 ```
@@ -143,8 +202,22 @@ npm run dev      # 同上
 打包配置位于 `package.json` 的 `build` 字段：
 
 - 输出目录: `dist/`
-- 打包格式: 便携版 exe（绿色免安装）
-- 目标平台: Windows x64
+- 打包命令:
+  - `npm run build` - 自动根据当前平台打包
+  - `npm run build:win` - 打包 Windows x64 便携版
+  - `npm run build:mac` - 打包 macOS 通用版（支持 Intel 和 Apple Silicon）
+- 打包格式: 
+  - Windows: 便携版 exe（绿色免安装）
+  - macOS: .app 应用包
+
+### 重新编译 macOS 亮度控制程序
+
+如果需要修改 macOS 亮度控制逻辑，可以重新编译：
+
+```bash
+cd /path/to/project
+clang -o brightness-final brightness-final.m -framework Foundation -framework CoreGraphics
+```
 
 ### 调试技巧
 
