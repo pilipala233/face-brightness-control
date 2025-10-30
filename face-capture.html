@@ -4,77 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>人脸照片采集工具</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+        /* 采集工具专用样式 */
+        .capture-container {
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .header {
+        .capture-header {
             text-align: center;
-            color: white;
             margin-bottom: 30px;
         }
 
-        .header h1 {
-            font-size: 2.5em;
+        .capture-header h1 {
+            color: #333;
+            font-size: 32px;
             margin-bottom: 10px;
         }
 
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+        .capture-header p {
+            color: #666;
+            font-size: 16px;
         }
 
-        .panel {
-            background: white;
-            border-radius: 15px;
+        .capture-section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             margin-bottom: 20px;
         }
 
-        .panel h2 {
-            color: #667eea;
+        .capture-section h2 {
+            color: #333;
+            font-size: 20px;
             margin-bottom: 20px;
-            font-size: 1.5em;
-            border-bottom: 2px solid #667eea;
             padding-bottom: 10px;
+            border-bottom: 2px solid #4a90e2;
         }
 
-        .video-container {
-            position: relative;
+        .info-box {
+            background: #f0f8ff;
+            border-left: 4px solid #4a90e2;
+            padding: 15px;
+            border-radius: 4px;
             margin-bottom: 20px;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
         }
 
-        #video {
-            width: 100%;
-            display: block;
-            border-radius: 10px;
+        .info-box p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
         }
 
-        #canvas {
-            display: none;
+        .info-box strong {
+            color: #333;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
@@ -82,144 +72,125 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: #333;
+            font-size: 14px;
         }
 
-        select, input[type="text"] {
+        .form-group select,
+        .form-group input[type="text"] {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            margin-bottom: 10px;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
         }
 
-        select:focus, input[type="text"]:focus {
+        .form-group select:focus,
+        .form-group input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #4a90e2;
         }
 
-        select {
-            cursor: pointer;
-            background-color: white;
+        .form-group input[type="text"]:read-only {
+            background: #f5f5f5;
+            color: #666;
         }
 
-        input[type="text"]:read-only {
-            background: #f8f9fa;
+        .video-container {
+            margin-bottom: 20px;
+            aspect-ratio: 4/3;
         }
 
-        .button-group {
+        #canvas {
+            display: none;
+        }
+
+        .button-row {
             display: flex;
             gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
-        button {
+        .button-row button {
             flex: 1;
-            min-width: 140px;
-            padding: 12px 20px;
-            font-size: 1em;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-success {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #ff9800;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .status {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-weight: 500;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
         }
 
         .counter {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
         }
 
         .counter .number {
-            font-size: 3em;
+            font-size: 48px;
             font-weight: bold;
-            color: #667eea;
+            color: #4a90e2;
+            margin-bottom: 5px;
         }
 
         .counter .label {
             color: #666;
-            margin-top: 5px;
+            font-size: 14px;
         }
 
-        .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
+        #captureStatus {
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+
+        #captureStatus.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        #captureStatus.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .usage-guide {
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .usage-guide p {
+            margin: 10px 0;
+        }
+
+        .usage-guide strong {
+            color: #333;
+        }
+
+        .tip-box {
+            margin-top: 20px;
             padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
+            background: #fff9e6;
+            border: 1px solid #ffe58f;
+            border-radius: 6px;
         }
 
-        .info-box p {
-            margin: 5px 0;
-            color: #0c5460;
+        .tip-box strong {
+            color: #d48806;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
+    <div class="capture-container">
+        <div class="capture-header">
             <h1>📷 人脸照片采集工具</h1>
             <p>为人脸识别功能采集和准备照片素材</p>
         </div>
 
-        <div class="panel">
+        <div class="capture-section">
             <h2>摄像头拍照</h2>
 
             <div class="info-box">
@@ -242,9 +213,9 @@
                 <canvas id="canvas"></canvas>
             </div>
 
-            <div class="button-group">
-                <button id="startCamera" class="btn-primary">启动摄像头</button>
-                <button id="selectFolder" class="btn-warning">选择保存文件夹</button>
+            <div class="button-row">
+                <button id="startCamera" class="btn btn-primary">启动摄像头</button>
+                <button id="selectFolder" class="btn btn-secondary">选择保存文件夹</button>
             </div>
 
             <div class="form-group">
@@ -257,25 +228,25 @@
                 <div class="label">已拍摄照片</div>
             </div>
 
-            <div class="button-group">
-                <button id="capturePhoto" class="btn-success" disabled>📸 拍照</button>
-                <button id="resetCounter" class="btn-danger">🔄 重置计数</button>
+            <div class="button-row">
+                <button id="capturePhoto" class="btn btn-success" disabled>📸 拍照</button>
+                <button id="resetCounter" class="btn btn-danger">🔄 重置计数</button>
             </div>
 
             <div id="captureStatus"></div>
         </div>
 
-        <div class="panel">
+        <div class="capture-section">
             <h2>使用说明</h2>
-            <div style="line-height: 1.8; color: #555;">
+            <div class="usage-guide">
                 <p><strong>步骤1：</strong> 选择摄像头设备</p>
                 <p><strong>步骤2：</strong> 点击"启动摄像头"</p>
                 <p><strong>步骤3：</strong> 点击"选择保存文件夹"选择照片保存位置</p>
                 <p><strong>步骤4：</strong> 对准摄像头，点击"拍照"按钮</p>
                 <p><strong>步骤5：</strong> 重复拍摄，建议不同角度5-10张</p>
-                <p style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px;">
+                <div class="tip-box">
                     <strong>💡 提示：</strong>拍摄完成后，可在主界面的"高级设置"中使用这些照片进行学习分析
-                </p>
+                </div>
             </div>
         </div>
     </div>

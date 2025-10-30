@@ -33,8 +33,10 @@ async function checkAndRequestAccessibility() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 700,
+    minWidth: 1000,
+    minHeight: 600,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -261,6 +263,8 @@ function createCaptureWindow() {
   const captureWindow = new BrowserWindow({
     width: 900,
     height: 800,
+    minWidth: 800,
+    minHeight: 700,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -272,25 +276,6 @@ function createCaptureWindow() {
   // 开发模式下打开调试工具
   if (!app.isPackaged || process.argv.includes('--dev')) {
     captureWindow.webContents.openDevTools();
-  }
-}
-
-// 创建测试窗口（保留用于开发测试）
-function createTestWindow() {
-  const testWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  });
-
-  testWindow.loadFile('face-test.html');
-  
-  // 开发模式下打开调试工具
-  if (!app.isPackaged || process.argv.includes('--dev')) {
-    testWindow.webContents.openDevTools();
   }
 }
 
@@ -321,18 +306,7 @@ function createMenu() {
           click: () => {
             createCaptureWindow();
           }
-        },
-        // 开发模式下显示测试工具
-        ...(!app.isPackaged || process.argv.includes('--dev') ? [
-          { type: 'separator' },
-          {
-            label: '人脸识别测试工具（开发用）',
-            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+T' : 'Ctrl+Shift+T',
-            click: () => {
-              createTestWindow();
-            }
-          }
-        ] : [])
+        }
       ]
     },
     // Windows 上添加"文件"菜单

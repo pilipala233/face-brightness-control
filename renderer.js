@@ -29,6 +29,8 @@ let showDetectionCheckbox;
 let sensitivitySelect;
 let faceThresholdInput;
 let detectionActionSelect;
+let frontalFaceOnlyCheckbox;
+let frontalStrictnessSelect;
 
 // 摄像头列表
 let cameras = [];
@@ -67,6 +69,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     sensitivitySelect = document.getElementById('sensitivity');
     faceThresholdInput = document.getElementById('faceThreshold');
     detectionActionSelect = document.getElementById('detectionAction');
+    frontalFaceOnlyCheckbox = document.getElementById('frontalFaceOnly');
+    frontalStrictnessSelect = document.getElementById('frontalStrictness');
 
     // 绑定按钮事件
     startBtn.addEventListener('click', startDetection);
@@ -77,6 +81,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 绑定检测方式切换事件
     detectionActionSelect.addEventListener('change', onDetectionActionChange);
+    
+    // 绑定正脸识别切换事件
+    frontalFaceOnlyCheckbox.addEventListener('change', onFrontalFaceToggle);
 
     // 绑定通知内容输入事件（自动保存）
     const notificationTextInput = document.getElementById('notificationText');
@@ -146,7 +153,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('无法获取当前亮度，将使用 100% 作为默认值');
         updateStatus('已就绪 (亮度控制可能不可用)', '#FFA500');
     }
+
+    // 初始化折叠功能
+    initCollapsible();
 });
+
+// 初始化折叠功能
+function initCollapsible() {
+    const headers = document.querySelectorAll('.collapsible-header');
+    
+    headers.forEach(header => {
+        header.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            
+            if (content) {
+                // 切换折叠状态
+                this.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            }
+        });
+    });
+}
 
 // 加载摄像头列表
 async function loadCameras() {
@@ -296,6 +324,82 @@ function stopDetection() {
     setBrightness(maxBrightness);
 }
 
+// 正脸判断：基于面部关键点计算面部角度
+function isFrontalFace(landmarks, strictness = 'medium') {
+    try {
+        // 获取关键点
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+        const nose = landmarks.getNose();
+        const jawline = landmarks.getJawOutline();
+        
+        // 方法1：眼睛到鼻尖的距离比
+        const leftEyeCenter = getCenter(leftEye);
+        const rightEyeCenter = getCenter(rightEye);
+        const noseTip = nose[3]; // 鼻尖
+        
+        const distToLeftEye = distance(noseTip, leftEyeCenter);
+        const distToRightEye = distance(noseTip, rightEyeCenter);
+        const eyeRatio = Math.min(distToLeftEye, distToRightEye) / Math.max(distToLeftEye, distToRightEye);
+        
+        // 方法2：下巴左右对称性
+        const leftJaw = jawline[3];   // 左脸颊
+        const rightJaw = jawline[13];  // 右脸颊
+        const chinCenter = jawline[8]; // 下巴中心
+        
+        const distToLeftJaw = distance(chinCenter, leftJaw);
+        const distToRightJaw = distance(chinCenter, rightJaw);
+        const jawRatio = Math.min(distToLeftJaw, distToRightJaw) / Math.max(distToLeftJaw, distToRightJaw);
+        
+        // 综合两个比例
+        const overallRatio = (eyeRatio + jawRatio) / 2;
+        
+        // 根据严格度设置阈值（调整为更严格）
+        const thresholds = {
+            loose: 0.75,    // 宽松
+            medium: 0.85,   // 适中（推荐）
+            strict: 0.92    // 严格
+        };
+        
+        const threshold = thresholds[strictness] || thresholds.medium;
+        
+        // 如果比例接近1，说明是正脸
+        return overallRatio >= threshold;
+    } catch (error) {
+        console.error('正脸判断出错:', error);
+        return true; // 出错时默认认为是正脸
+    }
+}
+
+// 辅助函数：计算多个点的中心
+function getCenter(points) {
+    const sum = points.reduce((acc, point) => {
+        return { x: acc.x + point.x, y: acc.y + point.y };
+    }, { x: 0, y: 0 });
+    
+    return {
+        x: sum.x / points.length,
+        y: sum.y / points.length
+    };
+}
+
+// 辅助函数：计算两点之间的欧氏距离
+function distance(point1, point2) {
+    const dx = point1.x - point2.x;
+    const dy = point1.y - point2.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+// 正脸识别切换事件
+function onFrontalFaceToggle() {
+    const frontalStrictnessGroup = document.getElementById('frontalStrictnessGroup');
+    if (frontalFaceOnlyCheckbox.checked) {
+        frontalStrictnessGroup.style.display = 'block';
+    } else {
+        frontalStrictnessGroup.style.display = 'none';
+    }
+}
+
 // 人脸检测函数
 async function detectFace() {
     if (!isRunning) return;
@@ -312,27 +416,47 @@ async function detectFace() {
 
             let detections;
 
-            // 根据选择的模型进行检测（如果需要识别，同时提取特征）
-            if (recognitionMode !== 'none' && recognitionModelsLoaded) {
-                // 高级模式：需要人脸识别
+            // 判断是否需要加载 landmarks
+            // 1. 开启了正脸识别 → 需要 landmarks
+            // 2. 开启了高级识别模式 → 需要 landmarks + descriptors
+            const needLandmarks = frontalFaceOnlyCheckbox.checked || (recognitionMode !== 'none' && recognitionModelsLoaded);
+            const needDescriptors = recognitionMode !== 'none' && recognitionModelsLoaded;
+
+            // 根据需要选择检测方式
+            if (needLandmarks) {
+                // 需要 landmarks（正脸判断或人脸识别）
                 if (selectedModel === 'tiny') {
-                    detections = await faceapi.detectAllFaces(
+                    let detection = faceapi.detectAllFaces(
                         video,
                         new faceapi.TinyFaceDetectorOptions({
                             inputSize: 416,
                             scoreThreshold: scoreThreshold
                         })
-                    ).withFaceLandmarks().withFaceDescriptors();
+                    ).withFaceLandmarks();
+                    
+                    // 如果需要识别，再加载 descriptors
+                    if (needDescriptors) {
+                        detection = detection.withFaceDescriptors();
+                    }
+                    
+                    detections = await detection;
                 } else if (selectedModel === 'ssd') {
-                    detections = await faceapi.detectAllFaces(
+                    let detection = faceapi.detectAllFaces(
                         video,
                         new faceapi.SsdMobilenetv1Options({
                             minConfidence: scoreThreshold
                         })
-                    ).withFaceLandmarks().withFaceDescriptors();
+                    ).withFaceLandmarks();
+                    
+                    // 如果需要识别，再加载 descriptors
+                    if (needDescriptors) {
+                        detection = detection.withFaceDescriptors();
+                    }
+                    
+                    detections = await detection;
                 }
             } else {
-                // 基本模式：只需要检测
+                // 基本模式：只需要检测人脸框
                 if (selectedModel === 'tiny') {
                     detections = await faceapi.detectAllFaces(
                         video,
@@ -351,40 +475,118 @@ async function detectFace() {
                 }
             }
 
-            const faceCount = detections ? detections.length : 0;
+            // 正脸过滤
+            let frontalFlags = []; // 标记每个人脸是否为正脸
+            let validDetections = detections; // 有效的检测结果（用于触发判断）
+            
+            if (frontalFaceOnlyCheckbox.checked && detections && detections.length > 0) {
+                const strictness = frontalStrictnessSelect.value;
+                
+                // 标记每个人脸是否为正脸
+                frontalFlags = detections.map(d => {
+                    if (d.landmarks) {
+                        return isFrontalFace(d.landmarks, strictness);
+                    }
+                    return true; // 如果没有landmarks，保守地认为是正脸
+                });
+                
+                // 过滤出正脸
+                validDetections = detections.filter((d, i) => frontalFlags[i]);
+            }
+            
+            const totalFaceCount = detections ? detections.length : 0;
+            const faceCount = validDetections ? validDetections.length : 0;
 
             // 根据模式决定是否降低亮度
             if (recognitionMode !== 'none' && recognitionModelsLoaded && faceCount > 0) {
-                // 高级模式：进行人脸识别
-                const recognitionResults = detections.map(d => recognizeFace(d.descriptor));
+                // 高级模式：进行人脸识别（只识别正脸）
+                let recognitionResults = validDetections.map(d => recognizeFace(d.descriptor));
+                
+                // 本人去重：如果识别到多个"本人"，只保留相似度最高的
+                recognitionResults = deduplicateOwner(recognitionResults, validDetections);
+                
                 const decision = shouldReduceBrightness(recognitionResults);
                 shouldReduce = decision;
 
                 // 显示调试信息
                 const categoryNames = { owner: '本人', trusted: '可信任', untrusted: '不可信任' };
-                const identities = recognitionResults.map((r, i) => {
-                    if (r.matched) {
-                        const icons = { owner: '👤', trusted: '✅', untrusted: '⚠️' };
-                        const name = categoryNames[r.category];
-                        return `${icons[r.category]}${name}(${(r.confidence * 100).toFixed(0)}%)`;
-                    } else {
-                        return '❓未知';
-                    }
-                }).join(', ');
                 
-                debugInfoEl.textContent = `${faceCount}张人脸: ${identities}`;
+                if (frontalFaceOnlyCheckbox.checked && totalFaceCount > 0) {
+                    // 开启了正脸识别：需要标注每个人脸是正脸还是侧脸
+                    let validIndex = 0; // 用于索引 validDetections 和 recognitionResults
+                    const allFaceInfo = detections.map((d, i) => {
+                        const isFrontal = frontalFlags[i];
+                        
+                        if (isFrontal) {
+                            // 正脸：显示识别结果
+                            const r = recognitionResults[validIndex];
+                            validIndex++;
+                            
+                            if (r.matched) {
+                                const icons = { owner: '👤', trusted: '✅', untrusted: '⚠️' };
+                                const name = categoryNames[r.category];
+                                return `${icons[r.category]}${name}[正脸,${(r.confidence * 100).toFixed(0)}%]`;
+                            } else {
+                                return '❓未知[正脸]';
+                            }
+                        } else {
+                            // 侧脸：只标注侧脸
+                            return '➡️侧脸';
+                        }
+                    }).join(', ');
+                    
+                    debugInfoEl.textContent = `${totalFaceCount}张人脸: ${allFaceInfo}`;
+                } else {
+                    // 未开启正脸识别：正常显示
+                    const identities = recognitionResults.map((r, i) => {
+                        if (r.matched) {
+                            const icons = { owner: '👤', trusted: '✅', untrusted: '⚠️' };
+                            const name = categoryNames[r.category];
+                            return `${icons[r.category]}${name}(${(r.confidence * 100).toFixed(0)}%)`;
+                        } else {
+                            return '❓未知';
+                        }
+                    }).join(', ');
+                    
+                    debugInfoEl.textContent = `${faceCount}张人脸: ${identities}`;
+                }
             } else {
                 // 基本模式：使用人脸数量阈值
                 const faceThreshold = parseInt(faceThresholdInput.value) || 2;
                 shouldReduce = faceCount >= faceThreshold;
 
                 // 显示调试信息
-                if (faceCount > 0) {
-                    const faceInfo = detections.map((d, i) => {
-                        const score = (d.score * 100).toFixed(0);
-                        return `人脸${i+1}(${score}%)`;
-                    }).join(', ');
-                    debugInfoEl.textContent = `${faceCount}张人脸: ${faceInfo}`;
+                if (totalFaceCount > 0) {
+                    if (frontalFaceOnlyCheckbox.checked) {
+                        // 开启了正脸识别：需要标注每个人脸是正脸还是侧脸
+                        let validIndex = 0;
+                        const allFaceInfo = detections.map((d, i) => {
+                            const isFrontal = frontalFlags[i];
+                            
+                            if (isFrontal) {
+                                // 正脸：显示置信度
+                                const validDet = validDetections[validIndex];
+                                // 处理不同的数据结构（有 landmarks 时是 detection.score，没有时是 score）
+                                const score = validDet.detection ? (validDet.detection.score * 100).toFixed(0) : (validDet.score * 100).toFixed(0);
+                                validIndex++;
+                                return `人脸${i+1}[正脸,${score}%]`;
+                            } else {
+                                // 侧脸：只标注侧脸
+                                return `➡️人脸${i+1}[侧脸]`;
+                            }
+                        }).join(', ');
+                        
+                        debugInfoEl.textContent = `${totalFaceCount}张人脸: ${allFaceInfo}`;
+                    } else {
+                        // 未开启正脸识别：正常显示
+                        const faceInfo = validDetections.map((d, i) => {
+                            // 处理不同的数据结构
+                            const score = d.detection ? (d.detection.score * 100).toFixed(0) : (d.score * 100).toFixed(0);
+                            return `人脸${i+1}(${score}%)`;
+                        }).join(', ');
+                        
+                        debugInfoEl.textContent = `${faceCount}张人脸: ${faceInfo}`;
+                    }
                 } else {
                     debugInfoEl.textContent = `未检测到人脸`;
                 }
@@ -395,14 +597,14 @@ async function detectFace() {
                 // 清空 canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (faceCount > 0) {
+                if (totalFaceCount > 0) {
                     // 确保 canvas 尺寸匹配
                     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                     }
 
-                    // 绘制人脸框
+                    // 绘制人脸框（使用 face-api.js 原生绘制）
                     faceapi.draw.drawDetections(canvas, detections);
                 }
             }
@@ -776,6 +978,93 @@ function onModeChange(event) {
 }
 
 // 识别人脸（对比已知人脸）
+// 本人去重：如果识别到多个"本人"，只保留相似度最高的，其他重新匹配
+function deduplicateOwner(recognitionResults, validDetections) {
+    // 找出所有识别为"本人"的索引
+    const ownerIndices = [];
+    recognitionResults.forEach((r, i) => {
+        if (r.matched && r.category === 'owner') {
+            ownerIndices.push({
+                index: i,
+                confidence: r.confidence
+            });
+        }
+    });
+    
+    // 如果只有0个或1个"本人"，不需要去重
+    if (ownerIndices.length <= 1) {
+        return recognitionResults;
+    }
+    
+    // 检测到多个"本人"，触发去重逻辑
+    console.log(`🔍 [本人去重] 检测到 ${ownerIndices.length} 个"本人"匹配，相似度：${ownerIndices.map(o => `${(o.confidence * 100).toFixed(0)}%`).join(', ')}`);
+    
+    // 按相似度排序，找出最佳匹配
+    ownerIndices.sort((a, b) => b.confidence - a.confidence);
+    const bestOwnerIndex = ownerIndices[0].index;
+    
+    console.log(`✅ [本人去重] 保留最高相似度 ${(ownerIndices[0].confidence * 100).toFixed(0)}% 为本人，其余降级重新识别...`);
+    
+    // 重新处理其他"本人"识别结果
+    const newResults = recognitionResults.map((r, i) => {
+        if (r.matched && r.category === 'owner' && i !== bestOwnerIndex) {
+            // 这是一个次优的"本人"匹配，需要重新识别
+            const descriptor = validDetections[i].descriptor;
+            const originalConfidence = r.confidence;
+            
+            // 重新匹配，但排除"本人"类别
+            const newResult = recognizeFaceExcludeOwner(descriptor);
+            
+            // 记录重新识别的结果
+            const categoryNames = { trusted: '可信任', untrusted: '不可信任', unknown: '未知' };
+            if (newResult.matched) {
+                console.log(`   ↳ 原本人(${(originalConfidence * 100).toFixed(0)}%) → ${categoryNames[newResult.category]}(${(newResult.confidence * 100).toFixed(0)}%)`);
+            } else {
+                console.log(`   ↳ 原本人(${(originalConfidence * 100).toFixed(0)}%) → 未知（未匹配其他类别）`);
+            }
+            
+            return newResult;
+        }
+        return r;
+    });
+    
+    return newResults;
+}
+
+// 识别人脸（排除"本人"类别）
+function recognizeFaceExcludeOwner(descriptor) {
+    let bestMatch = null;
+    let bestDistance = Infinity;
+    let bestCategory = null;
+    
+    // 只检查可信任和不可信任
+    ['trusted', 'untrusted'].forEach(category => {
+        faceDatabase[category].forEach(face => {
+            const distance = faceapi.euclideanDistance(descriptor, face.descriptor);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestMatch = face;
+                bestCategory = category;
+            }
+        });
+    });
+    
+    // 判断是否匹配（使用全局阈值）
+    if (bestDistance < recognitionThreshold) {
+        return {
+            matched: true,
+            category: bestCategory,
+            confidence: 1 - bestDistance,
+            name: bestMatch.name
+        };
+    } else {
+        return {
+            matched: false,
+            category: 'unknown'
+        };
+    }
+}
+
 function recognizeFace(descriptor) {
     // 使用全局阈值变量（可通过滑动条调节）
     let bestMatch = null;
