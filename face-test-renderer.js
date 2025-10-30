@@ -10,6 +10,7 @@ let stream;
 let modelsLoaded = false;
 let detectionInterval;
 let savedFaces = []; // 存储已知人脸特征
+let cameras = []; // 可用摄像头列表
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,6 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 加载模型
     await loadModels();
 
+    // 加载摄像头列表
+    await loadCameraList();
+
     // 绑定事件
     document.getElementById('startCamera').addEventListener('click', startCamera);
     document.getElementById('capturePhoto').addEventListener('click', capturePhoto);
@@ -27,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('selectAnalyzeFolder').addEventListener('click', selectAnalyzeFolder);
     document.getElementById('analyzeButton').addEventListener('click', analyzeFaces);
     document.getElementById('clearData').addEventListener('click', clearAllData);
+    document.getElementById('cameraSelect').addEventListener('change', onCameraChange);
 
     // 加载已保存的人脸数据
     loadSavedFaces();
@@ -55,12 +60,88 @@ async function loadModels() {
     }
 }
 
+// 加载摄像头列表
+async function loadCameraList() {
+    try {
+        // 先请求权限
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        tempStream.getTracks().forEach(track => track.stop());
+
+        // 获取所有设备
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        cameras = devices.filter(device => device.kind === 'videoinput');
+
+        const select = document.getElementById('cameraSelect');
+        select.innerHTML = '';
+
+        if (cameras.length === 0) {
+            select.innerHTML = '<option value="">未检测到摄像头</option>';
+            document.getElementById('startCamera').disabled = true;
+            return;
+        }
+
+        // 添加选项
+        cameras.forEach((camera, index) => {
+            const option = document.createElement('option');
+            option.value = camera.deviceId;
+            option.text = camera.label || `摄像头 ${index + 1}`;
+            select.appendChild(option);
+        });
+
+        console.log(`找到 ${cameras.length} 个摄像头设备`);
+    } catch (error) {
+        console.error('获取摄像头列表失败:', error);
+        const select = document.getElementById('cameraSelect');
+        select.innerHTML = '<option value="">获取摄像头失败</option>';
+    }
+}
+
+// 摄像头切换事件
+async function onCameraChange() {
+    // 如果摄像头正在运行，重新启动
+    if (stream) {
+        await stopCamera();
+        await startCamera();
+    }
+}
+
+// 停止摄像头
+async function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+    }
+    video.srcObject = null;
+}
+
 // 启动摄像头
 async function startCamera() {
     try {
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 640, height: 480 }
-        });
+        const select = document.getElementById('cameraSelect');
+        const deviceId = select.value;
+
+        if (!deviceId) {
+            alert('请先选择摄像头');
+            return;
+        }
+
+        // 停止当前摄像头
+        await stopCamera();
+
+        // 启动选定的摄像头
+        const constraints = {
+            video: {
+                deviceId: { exact: deviceId },
+                width: 640,
+                height: 480
+            }
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         video.srcObject = stream;
         video.addEventListener('loadedmetadata', () => {
@@ -68,7 +149,7 @@ async function startCamera() {
             canvas.height = video.videoHeight;
         });
 
-        document.getElementById('startCamera').disabled = true;
+        document.getElementById('startCamera').textContent = '重启摄像头';
         document.getElementById('capturePhoto').disabled = false;
 
         // 开始实时检测
@@ -424,11 +505,6 @@ function updateStatus(elementId, message, type) {
 
 // 清理
 window.addEventListener('beforeunload', () => {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
-    if (detectionInterval) {
-        clearInterval(detectionInterval);
-    }
+    stopCamera();
 });
 

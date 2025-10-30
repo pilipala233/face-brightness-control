@@ -10,7 +10,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>人脸检测亮度控制</h1>
+       
 
         <div class="main-content">
             <!-- 左侧：视频预览区域 -->
@@ -34,8 +34,9 @@
 
             <!-- 右侧：设置面板 -->
             <div class="right-panel">
+                <!-- 基本设置 -->
                 <div class="settings">
-                    <h3>设置</h3>
+                    <h3>基本设置</h3>
                     <label>
                         选择摄像头:
                         <select id="cameraSelect">
@@ -75,12 +76,121 @@
                     <label>
                         触发人脸数量阈值:
                         <input type="number" id="faceThreshold" value="2" min="1" max="10" step="1">
-                        <small style="color: #888;">≥此数量的人脸才降低亮度（默认2: 你+其他人）</small>
+                        <small id="thresholdHint" style="color: #888;">≥此数量的人脸才降低亮度（默认2: 你+其他人）</small>
+                    </label>
+                    <label>
+                        检测到窥屏时的处理方式:
+                        <select id="detectionAction">
+                            <option value="brightness">仅调节亮度</option>
+                            <option value="notification">仅系统通知</option>
+                            <option value="both">亮度调节 + 通知</option>
+                        </select>
+                        <small style="color: #888;">通知会显示在系统托盘区域</small>
+                    </label>
+                    <label id="notificationTextGroup" style="display: none;">
+                        通知提示内容:
+                        <input type="text" id="notificationText" placeholder="例如：有新消息、检测到异常等" maxlength="50">
+                        <small style="color: #888;">自定义通知文本，避免尴尬（留空使用默认）</small>
                     </label>
                     <label>
                         <input type="checkbox" id="showDetection" checked>
                         显示人脸检测框（关闭可提升性能）
                     </label>
+                </div>
+
+                <!-- 高级设置 -->
+                <div class="settings advanced-settings">
+                    <h3>高级设置 - 人脸识别</h3>
+                    <p style="color: #888; font-size: 0.9em; margin-bottom: 15px;">启用人脸识别功能，可针对不同人群进行差异化亮度控制</p>
+                    
+                    <!-- 本人 -->
+                    <div class="face-category">
+                        <div class="category-header">
+                            <h4>👤 本人</h4>
+                            <button id="clearOwnerBtn" class="btn-tiny btn-danger" title="清除本人数据">🗑️ 清除</button>
+                        </div>
+                        <div class="category-controls">
+                            <input type="text" id="ownerPath" placeholder="点击按钮选择照片文件夹" readonly>
+                            <button id="selectOwnerBtn" class="btn-small btn-primary">选择文件夹</button>
+                            <button id="analyzeOwnerBtn" class="btn-small btn-success" disabled>学习分析</button>
+                        </div>
+                        <div id="ownerStatus" class="category-status"></div>
+                    </div>
+
+                    <!-- 可信任 -->
+                    <div class="face-category">
+                        <div class="category-header">
+                            <h4>✅ 可信任</h4>
+                            <button id="clearTrustedBtn" class="btn-tiny btn-danger" title="清除可信任数据">🗑️ 清除</button>
+                        </div>
+                        <div class="category-controls">
+                            <input type="text" id="trustedPath" placeholder="点击按钮选择照片文件夹" readonly>
+                            <button id="selectTrustedBtn" class="btn-small btn-primary">选择文件夹</button>
+                            <button id="analyzeTrustedBtn" class="btn-small btn-success" disabled>学习分析</button>
+                        </div>
+                        <div id="trustedStatus" class="category-status"></div>
+                    </div>
+
+                    <!-- 不可信任 -->
+                    <div class="face-category">
+                        <div class="category-header">
+                            <h4>⚠️ 不可信任</h4>
+                            <button id="clearUntrustedBtn" class="btn-tiny btn-danger" title="清除不可信任数据">🗑️ 清除</button>
+                        </div>
+                        <div class="category-controls">
+                            <input type="text" id="untrustedPath" placeholder="点击按钮选择照片文件夹" readonly>
+                            <button id="selectUntrustedBtn" class="btn-small btn-primary">选择文件夹</button>
+                            <button id="analyzeUntrustedBtn" class="btn-small btn-success" disabled>学习分析</button>
+                        </div>
+                        <div id="untrustedStatus" class="category-status"></div>
+                    </div>
+
+                    <!-- 识别阈值设置 -->
+                    <div class="recognition-threshold">
+                        <h4>🎚️ 识别严格度</h4>
+                        <div class="threshold-control">
+                            <label>
+                                识别阈值（距离）:
+                                <input type="range" id="recognitionThreshold" min="0.3" max="0.7" step="0.05" value="0.5">
+                                <span id="thresholdValue">0.5</span>
+                            </label>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                当前要求置信度 > <strong id="confidenceValue">50%</strong> 才识别为已知人脸
+                            </small>
+                            <div class="threshold-guide">
+                                <span class="guide-item">← 严格（准确）</span>
+                                <span class="guide-item">宽松（容易识别）→</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 模式选择 -->
+                    <div class="mode-selection">
+                        <h4>🎯 识别模式</h4>
+                        <small style="color: #e74c3c; display: block; margin-bottom: 10px;">⚠️ 选择模式后，基本设置的人脸阈值将失效</small>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="none" checked>
+                            <span>不启用（使用基本设置）</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="exclude-owner">
+                            <span>除本人外 - 检测到非本人才降低亮度</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="exclude-trusted">
+                            <span>除本人及可信任外 - 检测到不可信任者才降低亮度</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="mode" value="untrusted-only">
+                            <span>仅针对不可信目标 - 只对已标记的不可信者降低亮度</span>
+                        </label>
+                    </div>
+
+                    <!-- 管理按钮 -->
+                    <div class="advanced-controls">
+                        <button id="clearAllFacesBtn" class="btn-small btn-danger">清空所有数据</button>
+                        <button id="viewFacesBtn" class="btn-small btn-info">查看已存储人脸</button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, systemPreferences, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, systemPreferences, dialog, Menu, Notification } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
@@ -221,7 +221,61 @@ ipcMain.handle('select-directory', async () => {
   return result.filePaths[0];
 });
 
-// 创建测试窗口
+// 显示系统通知
+ipcMain.handle('show-notification', async (event, { title, body }) => {
+  try {
+    // 检查通知是否被支持
+    if (!Notification.isSupported()) {
+      return { success: false, error: '系统不支持通知' };
+    }
+    
+    // 创建通知
+    const notification = new Notification({
+      title: title,
+      body: body,
+      silent: false,
+      timeoutType: 'default'
+    });
+    
+    // 点击通知时聚焦主窗口
+    notification.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+    
+    // 显示通知
+    notification.show();
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('显示通知失败:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 创建照片采集窗口
+function createCaptureWindow() {
+  const captureWindow = new BrowserWindow({
+    width: 900,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  captureWindow.loadFile('face-capture.html');
+  
+  // 开发模式下打开调试工具
+  if (!app.isPackaged || process.argv.includes('--dev')) {
+    captureWindow.webContents.openDevTools();
+  }
+}
+
+// 创建测试窗口（保留用于开发测试）
 function createTestWindow() {
   const testWindow = new BrowserWindow({
     width: 1400,
@@ -247,22 +301,47 @@ function createMenu() {
     ...(process.platform === 'darwin' ? [{
       label: app.name,
       submenu: [
-        { role: 'about' },
+        { role: 'about', label: '关于' },
         { type: 'separator' },
-        { role: 'quit' }
+        { role: 'services', label: '服务' },
+        { type: 'separator' },
+        { role: 'hide', label: '隐藏' },
+        { role: 'hideOthers', label: '隐藏其他' },
+        { role: 'unhide', label: '显示全部' },
+        { type: 'separator' },
+        { role: 'quit', label: '退出' }
       ]
     }] : []),
     {
       label: '工具',
       submenu: [
         {
-          label: '人脸识别测试',
+          label: '人脸照片采集工具',
+          accelerator: process.platform === 'darwin' ? 'Cmd+T' : 'Ctrl+T',
           click: () => {
-            createTestWindow();
+            createCaptureWindow();
           }
-        }
+        },
+        // 开发模式下显示测试工具
+        ...(!app.isPackaged || process.argv.includes('--dev') ? [
+          { type: 'separator' },
+          {
+            label: '人脸识别测试工具（开发用）',
+            accelerator: process.platform === 'darwin' ? 'Cmd+Shift+T' : 'Ctrl+Shift+T',
+            click: () => {
+              createTestWindow();
+            }
+          }
+        ] : [])
       ]
-    }
+    },
+    // Windows 上添加"文件"菜单
+    ...(process.platform !== 'darwin' ? [{
+      label: '文件',
+      submenu: [
+        { role: 'quit', label: '退出' }
+      ]
+    }] : [])
   ];
   
   const menu = Menu.buildFromTemplate(template);

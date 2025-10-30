@@ -218,7 +218,7 @@
             border-left: 4px solid #ff9800;
         }
 
-        input[type="text"] {
+        input[type="text"], select {
             width: 100%;
             padding: 10px;
             border: 2px solid #ddd;
@@ -227,9 +227,14 @@
             margin-bottom: 10px;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, select:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        select {
+            cursor: pointer;
+            background-color: white;
         }
 
         .form-group {
@@ -270,6 +275,13 @@
                 
                 <div id="modelStatus" class="status loading">
                     正在加载人脸检测模型...
+                </div>
+
+                <div class="form-group">
+                    <label>选择摄像头:</label>
+                    <select id="cameraSelect">
+                        <option value="">正在加载摄像头列表...</option>
+                    </select>
                 </div>
 
                 <div class="video-container">

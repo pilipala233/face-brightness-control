@@ -186,6 +186,265 @@ h1 {
     color: #6c757d;
 }
 
+/* 高级设置样式 */
+.advanced-settings {
+    margin-top: 20px;
+}
+
+.advanced-settings h3 {
+    color: #0d6efd;
+}
+
+.face-category {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.face-category h4 {
+    margin: 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.category-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.category-controls input[type="text"] {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #f8f9fa;
+}
+
+.category-controls button {
+    padding: 8px 16px;
+}
+
+.category-status {
+    margin-top: 10px;
+    font-size: 13px;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.category-status.success {
+    background: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
+
+.category-status.error {
+    background: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+}
+
+.category-status.loading {
+    background: #fff3cd;
+    color: #664d03;
+    border: 1px solid #ffecb5;
+}
+
+/* 识别阈值设置 */
+.recognition-threshold {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.recognition-threshold h4 {
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 16px;
+}
+
+.threshold-control label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.threshold-control input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+}
+
+.threshold-control #thresholdValue {
+    font-weight: bold;
+    color: #667eea;
+    min-width: 40px;
+}
+
+.threshold-control #confidenceValue {
+    color: #667eea;
+}
+
+.threshold-guide {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 11px;
+    color: #999;
+}
+
+.mode-selection {
+    background: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+}
+
+.mode-selection h4 {
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 16px;
+}
+
+.radio-label {
+    display: flex !important;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 8px !important;
+    background: #f8f9fa;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.radio-label:hover {
+    background: #e9ecef;
+}
+
+.radio-label input[type="radio"] {
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.radio-label span {
+    font-size: 14px;
+    color: #555;
+}
+
+.advanced-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-small.btn-primary {
+    background: #0d6efd;
+    color: white;
+}
+
+.btn-small.btn-primary:hover:not(:disabled) {
+    background: #0b5ed7;
+}
+
+.btn-small.btn-success {
+    background: #198754;
+    color: white;
+}
+
+.btn-small.btn-success:hover:not(:disabled) {
+    background: #157347;
+}
+
+.btn-small.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-small.btn-danger:hover:not(:disabled) {
+    background: #bb2d3b;
+}
+
+.btn-small.btn-info {
+    background: #0dcaf0;
+    color: #000;
+}
+
+.btn-small.btn-info:hover:not(:disabled) {
+    background: #31d2f2;
+}
+
+.btn-small:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-tiny {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-tiny.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-tiny.btn-danger:hover {
+    background: #bb2d3b;
+    transform: scale(1.05);
+}
+
+/* 滚动条美化 */
+.right-panel {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.right-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.right-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.right-panel::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 /* 响应式：小屏幕时改为垂直布局 */
 @media (max-width: 900px) {
     .main-content {
