@@ -10,6 +10,8 @@ if (process.platform === 'win32') {
 }
 
 let mainWindow;
+let pipWindow = null; // 画中画窗口
+let selectedCameraId = null; // 当前选中的摄像头ID
 
 // macOS 辅助功能权限检查
 async function checkAndRequestAccessibility() {
@@ -272,12 +274,69 @@ function createCaptureWindow() {
   });
 
   captureWindow.loadFile('face-capture.html');
-  
+
   // 开发模式下打开调试工具
   if (!app.isPackaged || process.argv.includes('--dev')) {
     captureWindow.webContents.openDevTools();
   }
 }
+
+// 创建画中画窗口
+function createPipWindow() {
+  // 如果画中画窗口已存在，聚焦它
+  if (pipWindow && !pipWindow.isDestroyed()) {
+    pipWindow.focus();
+    return;
+  }
+
+  pipWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    minWidth: 200,
+    minHeight: 150,
+    alwaysOnTop: true, // 始终置顶
+    frame: false, // 无边框
+    transparent: false,
+    resizable: true, // 可调整大小
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  pipWindow.loadFile('pip-window.html');
+
+  // 开发模式下打开调试工具
+  if (!app.isPackaged || process.argv.includes('--dev')) {
+    pipWindow.webContents.openDevTools();
+  }
+
+  // 窗口关闭时清理引用
+  pipWindow.on('closed', () => {
+    pipWindow = null;
+  });
+}
+
+// IPC: 打开画中画窗口
+ipcMain.handle('open-pip-window', (event, cameraId) => {
+  selectedCameraId = cameraId; // 保存选中的摄像头ID
+  createPipWindow();
+  return { success: true };
+});
+
+// IPC: 关闭画中画窗口
+ipcMain.handle('close-pip-window', () => {
+  if (pipWindow && !pipWindow.isDestroyed()) {
+    pipWindow.close();
+    pipWindow = null;
+  }
+  return { success: true };
+});
+
+// IPC: 获取选中的摄像头ID
+ipcMain.handle('get-selected-camera', () => {
+  return { success: true, cameraId: selectedCameraId };
+});
 
 // 创建菜单
 function createMenu() {

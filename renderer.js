@@ -17,6 +17,7 @@ let originalBrightness = null; // 改为 null，表示还未获取
 // UI 元素
 let startBtn;
 let stopBtn;
+let pipBtn; // 画中画按钮
 let statusEl;
 let faceDetectedEl;
 let debugInfoEl;
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     startBtn = document.getElementById('startBtn');
     stopBtn = document.getElementById('stopBtn');
+    pipBtn = document.getElementById('pipBtn');
     statusEl = document.getElementById('status');
     faceDetectedEl = document.getElementById('faceDetected');
     debugInfoEl = document.getElementById('debugInfo');
@@ -75,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 绑定按钮事件
     startBtn.addEventListener('click', startDetection);
     stopBtn.addEventListener('click', stopDetection);
+    pipBtn.addEventListener('click', openPipWindow);
 
     // 绑定摄像头切换事件
     cameraSelect.addEventListener('change', onCameraChange);
@@ -247,6 +250,20 @@ async function loadModels() {
         console.error('模型加载失败:', error);
         updateStatus('模型加载失败', '#e74c3c');
         alert('人脸检测模型加载失败，将使用简化检测模式');
+    }
+}
+
+// 打开画中画窗口
+async function openPipWindow() {
+    try {
+        // 传递当前选中的摄像头ID
+        const result = await ipcRenderer.invoke('open-pip-window', selectedCameraId);
+        if (result.success) {
+            console.log('画中画窗口已打开');
+        }
+    } catch (error) {
+        console.error('打开画中画窗口失败:', error);
+        alert('打开画中画窗口失败');
     }
 }
 

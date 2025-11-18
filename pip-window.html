@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画中画</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            -webkit-app-region: drag; /* 允许拖动窗口 */
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* 关闭按钮 */
+        .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            background: rgba(128, 128, 128, 0.6);
+            border: none;
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: all 0.2s;
+            -webkit-app-region: no-drag; /* 按钮区域不可拖动 */
+            font-weight: normal;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            background: rgba(128, 128, 128, 0.9);
+        }
+
+        .close-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 错误提示 */
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay playsinline></video>
+    <button class="close-btn" id="closeBtn" title="关闭画中画">×</button>
+    <div id="errorMessage" class="error-message" style="display: none;">
+        无法访问摄像头
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const video = document.getElementById('video');
+        const closeBtn = document.getElementById('closeBtn');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let stream = null;
+
+        // 初始化摄像头
+        async function initCamera() {
+            try {
+                // 从主进程获取选中的摄像头ID
+                const result = await ipcRenderer.invoke('get-selected-camera');
+                const cameraId = result.cameraId;
+
+                // 构建视频约束
+                const constraints = {
+                    video: cameraId ? {
+                        deviceId: { exact: cameraId },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } : {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                // 获取摄像头流
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                video.srcObject = stream;
+                video.play();
+            } catch (error) {
+                console.error('无法访问摄像头:', error);
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        // 关闭按钮点击事件
+        closeBtn.addEventListener('click', () => {
+            // 停止摄像头流
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            // 通知主进程关闭窗口
+            ipcRenderer.invoke('close-pip-window');
+        });
+
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initCamera();
+        });
+
+        // 窗口关闭前清理资源
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

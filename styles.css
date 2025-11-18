@@ -144,6 +144,15 @@ h1 {
     background: #bb2d3b;
 }
 
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+    background: #138496;
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
