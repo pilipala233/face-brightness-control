@@ -16,21 +16,92 @@ let selectedCameraId = null; // 当前选中的摄像头ID
 // macOS 辅助功能权限检查
 async function checkAndRequestAccessibility() {
   if (process.platform !== 'darwin') return true;
-  
+
   const trusted = systemPreferences.isTrustedAccessibilityClient(true);
-  
+
   if (!trusted) {
     console.log('⚠️  需要辅助功能权限才能控制亮度');
     console.log('请在系统设置中授予权限：');
     console.log('系统设置 -> 隐私与安全性 -> 辅助功能');
-    
+
     // 打开系统设置
     exec('open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"');
   } else {
     console.log('✓ 已获得辅助功能权限');
   }
-  
+
   return trusted;
+}
+
+// macOS 摄像头权限检查和请求
+async function checkAndRequestCameraPermission() {
+  if (process.platform !== 'darwin') return true;
+
+  try {
+    // 检查当前摄像头权限状态
+    const cameraStatus = systemPreferences.getMediaAccessStatus('camera');
+    console.log(`摄像头权限状态: ${cameraStatus}`);
+
+    if (cameraStatus === 'not-determined') {
+      // 权限未确定，主动请求权限
+      console.log('正在请求摄像头权限...');
+      const granted = await systemPreferences.askForMediaAccess('camera');
+
+      if (granted) {
+        console.log('✓ 摄像头权限已授予');
+        return true;
+      } else {
+        console.log('⚠️  摄像头权限被拒绝');
+        dialog.showMessageBox({
+          type: 'warning',
+          title: '需要摄像头权限',
+          message: '此应用需要访问摄像头以进行人脸检测',
+          detail: '请在"系统设置 -> 隐私与安全性 -> 摄像头"中授予权限',
+          buttons: ['打开系统设置', '稍后']
+        }).then(result => {
+          if (result.response === 0) {
+            exec('open "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"');
+          }
+        });
+        return false;
+      }
+    } else if (cameraStatus === 'denied') {
+      // 权限被拒绝
+      console.log('⚠️  摄像头权限被拒绝，需要在系统设置中手动授予');
+      dialog.showMessageBox({
+        type: 'warning',
+        title: '需要摄像头权限',
+        message: '此应用需要访问摄像头以进行人脸检测',
+        detail: '请在"系统设置 -> 隐私与安全性 -> 摄像头"中授予权限',
+        buttons: ['打开系统设置', '取消']
+      }).then(result => {
+        if (result.response === 0) {
+          exec('open "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"');
+        }
+      });
+      return false;
+    } else if (cameraStatus === 'granted') {
+      // 权限已授予
+      console.log('✓ 已获得摄像头权限');
+      return true;
+    } else if (cameraStatus === 'restricted') {
+      // 权限受限（家长控制等）
+      console.log('⚠️  摄像头权限受限');
+      dialog.showMessageBox({
+        type: 'error',
+        title: '摄像头权限受限',
+        message: '摄像头访问受到系统限制',
+        detail: '可能是由于家长控制或企业策略限制',
+        buttons: ['确定']
+      });
+      return false;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('检查摄像头权限失败:', error);
+    return false;
+  }
 }
 
 function createWindow() {
@@ -58,14 +129,17 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  // macOS 上检查辅助功能权限
+  // macOS 上检查权限
   if (process.platform === 'darwin') {
+    // 先请求摄像头权限（更重要）
+    await checkAndRequestCameraPermission();
+    // 再检查辅助功能权限
     await checkAndRequestAccessibility();
   }
-  
+
   // 创建菜单
   createMenu();
-  
+
   createWindow();
 
   app.on('activate', function () {
